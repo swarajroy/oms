@@ -19,9 +19,8 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	defer ln.Close()
-	store := NewStore()
-	svc := NewService(store)
-	NewGRPCHandler(grpcServer, svc)
+
+	NewGRPCHandler(grpcServer)
 
 	log.Printf("Orders GRPC Server listening on %s", ORDER_SCV_GRPC_ADDR)
 
