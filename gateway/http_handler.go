@@ -5,14 +5,17 @@ import (
 
 	common "github.com/swarajroy/oms-common"
 	pb "github.com/swarajroy/oms-common/api"
+	"github.com/swarajroy/oms-gateway/gateway"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type handler struct {
-	client pb.OrderServiceClient
+	orderGateway gateway.OrderGateway
 }
 
-func NewHandler(client pb.OrderServiceClient) *handler {
-	return &handler{client: client}
+func NewHandler(orderGateway gateway.OrderGateway) *handler {
+	return &handler{orderGateway: orderGateway}
 }
 
 func (h *handler) RegisterRoutes(mux *http.ServeMux) {
@@ -27,9 +30,17 @@ func (h *handler) HandleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.client.CreateOrder(r.Context(), &pb.CreateOrderRequest{
+	o, err := h.orderGateway.CreateOrder(r.Context(), &pb.CreateOrderRequest{
 		CustomerId: r.PathValue("customerId"),
 		Items:      items,
 	})
 
+	rStatus := status.Convert(err)
+	
+	if rStatus.Code() != codes.OK {
+		common.WriteError(w, rStatus.Message(), http.StatusBadRequest)
+		return
+	}
+
+	common.WriteJSON(w, o, http.StatusOK)
 }

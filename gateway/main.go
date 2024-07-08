@@ -1,40 +1,67 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"time"
 
-	_ "github.com/joho/godotenv/autoload"
-	common "github.com/swarajroy/oms-common"
-	pb "github.com/swarajroy/oms-common/api"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	
+	co_ "github.com/joho/godotenv/autoload"mmon "github.com/swarajroy/oms-common"
+	"github.com/swarajroy/oms-common/discovery"
+	"github.com/swarajroy/oms-common/discovery/consul"
+	"github.com/swarajroy/oms-gateway/gateway"
 )
 
 var (
-	HTTP_ADDR          = common.EnvString("HTTP_ADDR", ":8080")
-	ORDER_SERVICE_ADDR = "localhost:2000"
+	SERVICE_NAME = "gateway"
+	HTTP_ADDR    = common.EnvString("HTTP_ADDR", ":8080")
+	CONSUL_ADDR  = common.EnvString("CONSUL_ADDR", "localhost:8500")
 )
 
 func main() {
 
-	conn, err := grpc.NewClient(ORDER_SERVICE_ADDR, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	instanceId := discovery.GenerateInstanceId(SERVICE_NAME)
+
+	registry, err := consul.NewRegistry(CONSUL_ADDR)
 	if err != nil {
-		log.Fatal("Failed to dial a connection with GRPC")
+		panic(err)
 	}
-	defer conn.Close()
+	defer registry.Deregister(ctx, instanceId, SERVICE_NAME)
 
-	log.Printf("Dialing connection to orders service at %s", ORDER_SERVICE_ADDR)
+	if err := registry.Register(ctx, instanceId, SERVICE_NAME, HTTP_ADDR); err != nil {
+		panic(err)
+	}
 
-	c := pb.NewOrderServiceClient(conn)
-
-	mux := http.NewServeMux()
-	handler := NewHandler(c)
-	handler.RegisterRoutes(mux)
+	grpcGateway := gateway.NewGRPCGateway(registry)
+	handler := NewHandler(grpcGateway)
 
 	log.Printf("Starting the http server on port %s", HTTP_ADDR)
 
+	done := make(chan bool)
+	defer close(done)
+
+	go healthCheck(done, registry, instanceId)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
 	if err := http.ListenAndServe(HTTP_ADDR, mux); err != nil {
 		log.Fatalf("Failed to start http server on port %s", HTTP_ADDR)
+	}
+}
+
+func healthCheck(done chan bool, registry *consul.Registry, instanceId string) {
+	for {
+		select {
+		case <-done:
+			return
+		default:
+			if err := registry.HealthCheck(instanceId, SERVICE_NAME); err != nil {
+				log.Fatalf("Failed to health check instance %s of service %s", instanceId, SERVICE_NAME)
+				close(done)
+			}
+		}
+		time.Sleep(time.Second * 2) // punctuate the calls to HealthCheck
 	}
 }
