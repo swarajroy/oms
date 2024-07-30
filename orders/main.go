@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 	common "github.com/swarajroy/oms-common"
+	"github.com/swarajroy/oms-common/broker"
 	"github.com/swarajroy/oms-common/discovery"
 	"github.com/swarajroy/oms-common/discovery/consul"
 	"google.golang.org/grpc"
@@ -17,6 +18,10 @@ var (
 	SERVICE_NAME = "orders"
 	GRPC_ADDR    = common.EnvString("GRPC_ADDR", "localhost:2000")
 	CONSUL_ADDR  = common.EnvString("CONSUL_ADDR", "localhost:8500")
+	AMQP_USER    = common.EnvString("RABBITMQ_USER", "guest")
+	AMQP_PASS    = common.EnvString("RABBITMQ_PASS", "guest")
+	AMQP_HOST    = common.EnvString("RABBITMQ_HOST", "localhost")
+	AMQP_PORT    = common.EnvString("RABBITMQ_PORT", "5672")
 )
 
 func main() {
@@ -33,6 +38,12 @@ func main() {
 		panic(err)
 	}
 
+	ch, fnclose := broker.Connect(AMQP_USER, AMQP_USER, AMQP_HOST, AMQP_PORT)
+	defer func() {
+		ch.Close()
+		fnclose()
+	}()
+
 	grpcServer := grpc.NewServer()
 	ln, err := net.Listen("tcp", GRPC_ADDR)
 	if err != nil {
@@ -40,12 +51,14 @@ func main() {
 	}
 	defer ln.Close()
 
-	NewGRPCHandler(grpcServer)
+	NewGRPCHandler(grpcServer, ch)
 
 	log.Printf("Orders GRPC Server listening on %s", GRPC_ADDR)
 
 	done := make(chan bool)
-	defer close(done)
+	defer func() {
+		close(done)
+	}()
 
 	go healthCheck(done, registry, instanceId)
 
