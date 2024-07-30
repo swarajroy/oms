@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	
-	co_ "github.com/joho/godotenv/autoload"mmon "github.com/swarajroy/oms-common"
+	_ "github.com/joho/godotenv/autoload"
+	common "github.com/swarajroy/oms-common"
 	"github.com/swarajroy/oms-common/discovery"
 	"github.com/swarajroy/oms-common/discovery/consul"
 	"github.com/swarajroy/oms-gateway/gateway"
