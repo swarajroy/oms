@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"time"
 
+	"github.com/stripe/stripe-go/v79"
 	common "github.com/swarajroy/oms-common"
 	"github.com/swarajroy/oms-common/broker"
 	"github.com/swarajroy/oms-common/discovery"
 	"github.com/swarajroy/oms-common/discovery/consul"
+	"github.com/swarajroy/oms-payments/processor/stripeprocessor"
 	"google.golang.org/grpc"
 )
 
@@ -21,6 +24,7 @@ var (
 	AMQP_PASS    = common.EnvString("RABBITMQ_PASS", "guest")
 	AMQP_HOST    = common.EnvString("RABBITMQ_HOST", "localhost")
 	AMQP_PORT    = common.EnvString("RABBITMQ_PORT", "5672")
+	STRIPE_KEY   = common.EnvString("STRIPE_KEY", "sk_test_51Pkl3SFmQPISRdlo8SIHtHfspZaAW31DKkhAVpbuCbWhNpo7SPp6rIih11iAQK4UacX0Q9zUAdBoMtbLUGpCBBBB00cjPn5oUy")
 )
 
 func main() {
@@ -33,15 +37,29 @@ func main() {
 	}
 	defer registry.Deregister(ctx, instanceId, SERVICE_NAME)
 
+	// stripe setup
+	fmt.Printf("STRIPE KEY = %s", STRIPE_KEY)
+	stripe.Key = "sk_test_51Pkl3SFmQPISRdlo8SIHtHfspZaAW31DKkhAVpbuCbWhNpo7SPp6rIih11iAQK4UacX0Q9zUAdBoMtbLUGpCBBBB00cjPn5oUy"
+	stripeProcessor := stripeprocessor.NewProcessor()
+	svc := NewService(stripeProcessor)
+
+	//consul reg-dereg setup
+	//paymentProcessor := stripe.NewProcessor()
+
 	if err := registry.Register(ctx, instanceId, SERVICE_NAME, GRPC_ADDR); err != nil {
 		panic(err)
 	}
 
+	// messaging broker setup
 	ch, fnclose := broker.Connect(AMQP_USER, AMQP_USER, AMQP_HOST, AMQP_PORT)
 	defer func() {
 		ch.Close()
 		fnclose()
 	}()
+
+	amqpConsumer := NewConsumer(svc, ch)
+
+	go amqpConsumer.Listen()
 
 	grpcServer := grpc.NewServer()
 	ln, err := net.Listen("tcp", GRPC_ADDR)

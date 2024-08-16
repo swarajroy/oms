@@ -50,8 +50,10 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	defer ln.Close()
+	store := NewStore()
+	svc := NewService(store)
 
-	NewGRPCHandler(grpcServer, ch)
+	NewGRPCHandler(grpcServer, ch, svc)
 
 	log.Printf("Orders GRPC Server listening on %s", GRPC_ADDR)
 
