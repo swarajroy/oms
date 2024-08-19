@@ -48,10 +48,14 @@ func (h *handler) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) handleGetOrder(w http.ResponseWriter, r *http.Request) {
 	o, err := h.orderGateway.GetOrder(r.Context(), r.PathValue("customerId"), r.PathValue("orderId"))
-	rStatus := status.Convert(err)
-	if rStatus.Code() != codes.OK {
-		common.WriteError(w, rStatus.Message(), http.StatusBadRequest)
-		return
+
+	if err != nil {
+		rStatus := status.Convert(err)
+		if rStatus.Code() != codes.OK {
+			common.WriteError(w, rStatus.Message(), http.StatusBadRequest)
+			return
+		}
 	}
+
 	common.WriteJSON(w, o, http.StatusOK)
 }

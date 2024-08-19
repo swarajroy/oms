@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/stripe/stripe-go/v79"
+	"github.com/stripe/stripe-go"
 	common "github.com/swarajroy/oms-common"
 	"github.com/swarajroy/oms-common/broker"
 	"github.com/swarajroy/oms-common/discovery"
@@ -24,7 +24,7 @@ var (
 	AMQP_PASS    = common.EnvString("RABBITMQ_PASS", "guest")
 	AMQP_HOST    = common.EnvString("RABBITMQ_HOST", "localhost")
 	AMQP_PORT    = common.EnvString("RABBITMQ_PORT", "5672")
-	STRIPE_KEY   = common.EnvString("STRIPE_KEY", "sk_test_51Pkl3SFmQPISRdlo8SIHtHfspZaAW31DKkhAVpbuCbWhNpo7SPp6rIih11iAQK4UacX0Q9zUAdBoMtbLUGpCBBBB00cjPn5oUy")
+	STRIPE_KEY   = common.EnvString("STRIPE_KEY", "")
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	defer registry.Deregister(ctx, instanceId, SERVICE_NAME)
 
 	// stripe setup
-	fmt.Printf("STRIPE KEY = %s", STRIPE_KEY)
+	fmt.Printf("STRIPE KEY = %s\n", STRIPE_KEY)
 	stripe.Key = "sk_test_51Pkl3SFmQPISRdlo8SIHtHfspZaAW31DKkhAVpbuCbWhNpo7SPp6rIih11iAQK4UacX0Q9zUAdBoMtbLUGpCBBBB00cjPn5oUy"
 	stripeProcessor := stripeprocessor.NewProcessor()
 	svc := NewService(stripeProcessor)
@@ -70,7 +70,7 @@ func main() {
 
 	//NewGRPCHandler(grpcServer, ch)
 
-	log.Printf("Payments GRPC Server listening on %s", GRPC_ADDR)
+	log.Printf("Payments GRPC Server listening on %s\n", GRPC_ADDR)
 
 	done := make(chan bool)
 	defer func() {
