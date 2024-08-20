@@ -24,7 +24,7 @@ var (
 	AMQP_PASS    = common.EnvString("RABBITMQ_PASS", "guest")
 	AMQP_HOST    = common.EnvString("RABBITMQ_HOST", "localhost")
 	AMQP_PORT    = common.EnvString("RABBITMQ_PORT", "5672")
-	STRIPE_KEY   = common.EnvString("STRIPE_KEY", "")
+	STRIPE_KEY   = common.EnvString("STRIPE_KEY", "sk_test_51Pkl3SFmQPISRdlo8SIHtHfspZaAW31DKkhAVpbuCbWhNpo7SPp6rIih11iAQK4UacX0Q9zUAdBoMtbLUGpCBBBB00cjPn5oUy")
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 
 	// stripe setup
 	fmt.Printf("STRIPE KEY = %s\n", STRIPE_KEY)
-	stripe.Key = "sk_test_51Pkl3SFmQPISRdlo8SIHtHfspZaAW31DKkhAVpbuCbWhNpo7SPp6rIih11iAQK4UacX0Q9zUAdBoMtbLUGpCBBBB00cjPn5oUy"
+	stripe.Key = STRIPE_KEY
 	stripeProcessor := stripeprocessor.NewProcessor()
 	svc := NewService(stripeProcessor)
 
