@@ -3,6 +3,7 @@ package common
 import (
 	"testing"
 
+	_ "github.com/joho/godotenv/autoload" // this is a must to read the .env
 	"github.com/stretchr/testify/assert"
 )
 
