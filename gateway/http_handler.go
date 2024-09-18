@@ -19,6 +19,8 @@ func NewHandler(orderGateway gateway.OrderGateway) *handler {
 }
 
 func (h *handler) RegisterRoutes(mux *http.ServeMux) {
+	//static folder servinng
+	mux.Handle("/", http.FileServer(http.Dir("public")))
 	mux.HandleFunc("POST /api/1/customers/{customerId}/orders", h.handleCreateOrder)
 	mux.HandleFunc("GET /api/1/customers/{customerId}/orders/{orderId}", h.handleGetOrder)
 }
