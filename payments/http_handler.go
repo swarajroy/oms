@@ -1,19 +1,25 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stripe/stripe-go/v79"
 	"github.com/stripe/stripe-go/v79/webhook"
 	common "github.com/swarajroy/oms-common"
+	pb "github.com/swarajroy/oms-common/api"
+	"github.com/swarajroy/oms-common/broker"
 )
 
 type PaymentHttpHandler struct {
+	channel *amqp.Channel
 }
 
 func NewPaymentHttpHandler() *PaymentHttpHandler {
@@ -92,8 +98,34 @@ func (ph *PaymentHttpHandler) HandleSomeRoute(w http.ResponseWriter, r *http.Req
 		}
 		if session.PaymentStatus == "paid" {
 			log.Printf("Payment for checkout session %v succeeded", session.ID)
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			defer cancel()
+
+			o := &pb.Order{
+				Id:          session.Metadata["orderId"],
+				CustomerId:  session.Metadata["customerId"],
+				Status:      "paid",
+				PaymentLink: "",
+			}
+
+			body, err := json.Marshal(o)
+
+			if err != nil {
+				log.Fatalf("error occurred err = %s", err.Error())
+				return
+			}
+
+			err = ph.channel.PublishWithContext(ctx, broker.OrderPaidEvent, "", false, false, amqp.Publishing{
+				ContentType:  "application/json",
+				DeliveryMode: amqp.Persistent,
+				Body:         body,
+			})
+
+			if err != nil {
+				return
+			}
 		}
-		
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unhandled event type: %s\n", event.Type)
 	}
